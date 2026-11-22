@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Recommender Mobile</title>
+  <!-- Google Fonts: Fraunces & Manrope -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#050505',
+            card: '#121212',
+            'card-alt': '#141414',
+            border: '#2A2A2A',
+            'text-primary': '#F2F2F2',
+            'text-muted': '#A3A3A3',
+            accent: '#3DD68C',
+            'accent-hover': '#32b876',
+            'accent-dim': '#3dd68c18',
+            'accent-border': '#3dd68c40',
+            'warning-bg': '#241a0d',
+            'warning-border': '#684514',
+            'warning-text': '#fbbf24',
+            'error-bg': '#241010',
+            'error-border': '#632020',
+            'error-text': '#f87171'
+          },
+          fontFamily: {
+            fraunces: ['Fraunces', 'serif'],
+            manrope: ['Manrope', 'sans-serif']
+          },
+          borderRadius: {
+            'custom': '14px'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #050505;
+      color: #F2F2F2;
+      font-family: 'Manrope', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-serif-heading {
+      font-family: 'Fraunces', serif;
+    }
+    /* Custom Range Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #2A2A2A;
+      border-radius: 9999px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #3DD68C;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -7px;
+      box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.2);
+    }
+    .focus-ring:focus {
+      outline: 2px solid #3DD68C !important;
+      outline-offset: 1px;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 pb-12 selection:bg-accent/20 selection:text-accent">
+
+  <!-- Mobile Container: Single Stacked Column -->
+  <div class="max-w-[420px] mx-auto space-y-6">
+
+    <!-- Interactive Mobile State Switcher -->
+    <div class="bg-[#121212] border border-border rounded-custom p-2.5 flex items-center justify-between text-[11px]">
+      <span class="text-text-muted font-medium flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+        Mobile State:
+      </span>
+      <select onchange="switchMobileState(this.value)" class="bg-[#1A1A1A] border border-border text-text-primary rounded px-2 py-1 text-xs focus-ring">
+        <option value="results" selected>Results (Default)</option>
+        <option value="loading">Loading State</option>
+        <option value="empty">Empty State</option>
+        <option value="error">API Error</option>
+        <option value="dataset">Dataset Error</option>
+      </select>
+    </div>
+
+    <!-- 1. AppHeader Component -->
+    <header class="space-y-2.5">
+      <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#141414] border border-border text-[10px] font-mono text-text-muted">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+        <span>Mode: <strong class="text-text-primary font-normal">Groq</strong> · openai/gpt-oss-20b</span>
+      </div>
+      <h1 class="font-serif-heading text-3xl font-normal tracking-tight text-text-primary">
+        Restaurant Recommender
+      </h1>
+      <p class="text-sm text-text-muted leading-relaxed">
+        Filter real Zomato listings, then let AI rank and explain the best fits.
+      </p>
+    </header>
+
+    <!-- 2. PreferenceForm (One Card Component) -->
+    <section class="bg-card border border-border rounded-custom p-5 shadow-xl space-y-5">
+      <div class="pb-3 border-b border-border/60">
+        <h2 class="font-serif-heading text-xl font-normal text-text-primary">Your preferences</h2>
+      </div>
+
+      <form id="mobile-form" onsubmit="event.preventDefault(); triggerMobileSubmit();" class="space-y-4">
+        <!-- Location -->
+        <div class="space-y-1.5">
+          <label for="m-loc" class="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Location
+          </label>
+          <div class="relative">
+            <select id="m-loc" class="w-full h-11 px-3 bg-card-alt border border-border rounded-custom text-sm text-text-primary focus-ring appearance-none">
+              <option value="Indiranagar" selected>Indiranagar</option>
+              <option value="Koramangala">Koramangala</option>
+              <option value="Lavelle Road">Lavelle Road</option>
+              <option value="Whitefield">Whitefield</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-muted">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Budget segmented control -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Budget
+          </label>
+          <div class="grid grid-cols-3 gap-1 p-1 bg-card-alt border border-border rounded-custom h-11 items-center">
+            <button type="button" onclick="setMobileBudget('Low', this)" class="m-budget-btn h-9 rounded-[10px] text-xs font-medium text-text-muted">Low</button>
+            <button type="button" onclick="setMobileBudget('Medium', this)" class="m-budget-btn h-9 rounded-[10px] text-xs font-semibold bg-[#242424] text-text-primary border border-border/80">Medium</button>
+            <button type="button" onclick="setMobileBudget('High', this)" class="m-budget-btn h-9 rounded-[10px] text-xs font-medium text-text-muted">High</button>
+          </div>
+        </div>
+
+        <!-- Cuisine -->
+        <div class="space-y-1.5">
+          <label for="m-cuisine" class="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Cuisine
+          </label>
+          <div class="relative">
+            <select id="m-cuisine" class="w-full h-11 px-3 bg-card-alt border border-border rounded-custom text-sm text-text-primary focus-ring appearance-none">
+              <option value="North Indian">North Indian</option>
+              <option value="Chinese">Chinese</option>
+              <option value="South Indian">South Indian</option>
+              <option value="Fast Food">Fast Food</option>
+              <option value="Biryani">Biryani</option>
+              <option value="Cafe">Cafe</option>
+              <option value="Italian" selected>Italian</option>
+              <option value="Continental">Continental</option>
+              <option value="Desserts">Desserts</option>
+              <option value="Street Food">Street Food</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-muted">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Or type a cuisine -->
+        <div class="space-y-1.5">
+          <label for="m-custom-cuisine" class="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Or type a cuisine
+          </label>
+          <input type="text" id="m-custom-cuisine" placeholder="e.g. Thai" class="w-full h-11 px-3 bg-card-alt border border-border rounded-custom text-sm text-text-primary placeholder:text-text-muted/40 focus-ring">
+        </div>
+
+        <!-- Minimum rating slider -->
+        <div class="p-3.5 rounded-custom bg-[#0E0E0E] border border-border/60 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold uppercase tracking-wider text-text-muted">Minimum rating</span>
+            <span class="font-mono text-accent font-semibold flex items-center gap-1 bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20">
+              <svg class="w-3 h-3 fill-accent" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              <span id="m-rating-val">4.0</span>
+            </span>
+          </div>
+          <input type="range" min="0.0" max="5.0" step="0.1" value="4.0" oninput="document.getElementById('m-rating-val').textContent = parseFloat(this.value).toFixed(1)" class="focus-ring">
+        </div>
+
+        <!-- How many recommendations slider -->
+        <div class="p-3.5 rounded-custom bg-[#0E0E0E] border border-border/60 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold uppercase tracking-wider text-text-muted">Recommendations</span>
+            <span class="font-mono text-accent font-semibold bg-accent/10 px-2 py-0.5 rounded border border-accent/20">
+              <span id="m-count-val">5</span>
+            </span>
+          </div>
+          <input type="range" min="1" max="10" step="1" value="5" oninput="document.getElementById('m-count-val').textContent = this.value" class="focus-ring">
+        </div>
+
+        <!-- Additional preferences text field -->
+        <div class="space-y-1.5">
+          <label for="m-add-pref" class="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Additional preferences
+          </label>
+          <input type="text" id="m-add-pref" placeholder="e.g. family-friendly, cafe, outdoor seating" class="w-full h-11 px-3 bg-card-alt border border-border rounded-custom text-sm text-text-primary placeholder:text-text-muted/40 focus-ring">
+        </div>
+
+        <!-- Full-width primary button -->
+        <button type="submit" id="m-submit-btn" class="w-full h-12 rounded-custom bg-accent hover:bg-accent-hover text-[#050505] font-semibold text-sm transition-all shadow-md focus-ring flex items-center justify-center gap-2">
+          <span>Get recommendations</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </form>
+    </section>
+
+    <!-- 3. StatusLine Component -->
+    <div class="text-center text-xs text-text-muted py-0.5 flex items-center justify-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+      <span>Dataset ready · 12,530 restaurants cached.</span>
+    </div>
+
+    <!-- DYNAMIC MOBILE STATES -->
+    <div id="m-states-container">
+
+      <!-- RESULTS STATE (Default) -->
+      <div id="m-state-results" class="space-y-5">
+        
+        <!-- 4. MetricStrip Component (Mobile Stack/Grid) -->
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-card border border-border rounded-custom p-2.5">
+            <span class="block text-[10px] text-text-muted">Candidates</span>
+            <span class="font-mono text-sm font-bold text-text-primary">18</span>
+          </div>
+          <div class="bg-card border border-border rounded-custom p-2.5">
+            <span class="block text-[10px] text-text-muted">Filtered</span>
+            <span class="font-mono text-sm font-bold text-text-primary">42</span>
+          </div>
+          <div class="bg-card border border-border rounded-custom p-2.5">
+            <span class="block text-[10px] text-text-muted">Results</span>
+            <span class="font-mono text-sm font-bold text-accent">5</span>
+          </div>
+        </div>
+
+        <!-- 6. SummaryBanner Component -->
+        <div class="bg-card-alt border border-border rounded-custom p-3.5 flex items-start gap-2.5">
+          <div class="p-1 rounded bg-accent/10 text-accent border border-accent/20 flex-shrink-0 mt-0.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <p class="text-xs text-text-primary font-medium leading-relaxed">
+            Five Italian spots in Indiranagar match a medium budget and a 4.0+ rating.
+          </p>
+        </div>
+
+        <!-- 5. RecommendationCard List Component -->
+        <div class="space-y-3">
+          
+          <!-- Card 1: Toit -->
+          <article class="bg-card border border-border rounded-custom p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-accent text-[#050505] font-mono text-xs font-bold flex items-center justify-center">#1</span>
+                <h3 class="font-serif-heading text-lg font-normal text-text-primary">Toit</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 font-mono text-xs font-semibold text-accent">
+                <svg class="w-3.5 h-3.5 fill-accent" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                4.6
+              </span>
+            </div>
+            <div class="text-xs text-text-muted flex items-center gap-1.5 flex-wrap">
+              <span>Italian</span>
+              <span>·</span>
+              <span>₹1,800 for two</span>
+              <span>·</span>
+              <span>Indiranagar</span>
+            </div>
+            <p class="text-xs text-text-muted/90 pt-2 border-t border-border/50 line-clamp-2">
+              <strong class="text-accent font-mono text-[10px]">AI:</strong> Lively brewpub with a strong rating and a menu that fits a medium budget.
+            </p>
+          </article>
+
+          <!-- Card 2: Olive Beach -->
+          <article class="bg-card border border-border rounded-custom p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-[#222] text-text-primary font-mono text-xs font-bold border border-border flex items-center justify-center">#2</span>
+                <h3 class="font-serif-heading text-lg font-normal text-text-primary">Olive Beach</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 font-mono text-xs font-semibold text-accent">
+                <svg class="w-3.5 h-3.5 fill-accent" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                4.4
+              </span>
+            </div>
+            <div class="text-xs text-text-muted flex items-center gap-1.5 flex-wrap">
+              <span>Italian</span>
+              <span>·</span>
+              <span>₹2,200 for two</span>
+              <span>·</span>
+              <span>Indiranagar</span>
+            </div>
+            <p class="text-xs text-text-muted/90 pt-2 border-t border-border/50 line-clamp-2">
+              <strong class="text-accent font-mono text-[10px]">AI:</strong> Polished dining room, good for a slower meal with reliable ratings.
+            </p>
+          </article>
+
+          <!-- Card 3: Chianti -->
+          <article class="bg-card border border-border rounded-custom p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-[#222] text-text-primary font-mono text-xs font-bold border border-border flex items-center justify-center">#3</span>
+                <h3 class="font-serif-heading text-lg font-normal text-text-primary">Chianti</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 font-mono text-xs font-semibold text-accent">
+                <svg class="w-3.5 h-3.5 fill-accent" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                4.3
+              </span>
+            </div>
+            <div class="text-xs text-text-muted flex items-center gap-1.5 flex-wrap">
+              <span>Italian</span>
+              <span>·</span>
+              <span>₹1,500 for two</span>
+              <span>·</span>
+              <span>Indiranagar</span>
+            </div>
+            <p class="text-xs text-text-muted/90 pt-2 border-t border-border/50 line-clamp-2">
+              <strong class="text-accent font-mono text-[10px]">AI:</strong> Classic Italian plates at a more moderate cost for two.
+            </p>
+          </article>
+
+        </div>
+
+        <!-- 7. DetailsDisclosure Component -->
+        <div class="bg-card border border-border rounded-custom overflow-hidden">
+          <button type="button" onclick="toggleMDisclosure()" class="w-full px-4 py-3 flex items-center justify-between text-left text-xs font-semibold text-text-muted">
+            <span>Request details</span>
+            <svg id="m-arrow" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="m-details" class="hidden px-4 pb-4 pt-1 border-t border-border/60 bg-[#090909] font-mono text-[11px] text-text-muted space-y-1">
+            <p class="text-accent">Model: openai/gpt-oss-20b</p>
+            <p>Dataset: Indiranagar / Italian / Medium</p>
+            <p>Execution: Groq Fast LPU</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="m-state-loading" class="hidden bg-card border border-border rounded-custom p-6 text-center space-y-3">
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-accent-dim border border-accent-border">
+          <svg class="w-5 h-5 text-accent animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </div>
+        <p class="font-serif-heading text-base text-text-primary">
+          Finding matches and asking the AI to rank them…
+        </p>
+        <p class="text-xs text-text-muted">Querying 12,530 cached records</p>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="m-state-empty" class="hidden bg-card border border-border rounded-custom p-6 text-center space-y-3">
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-warning-bg border border-warning-border text-warning-text">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3 class="font-serif-heading text-lg text-text-primary">
+          No restaurants matched these filters.
+        </h3>
+        <p class="text-xs text-text-muted leading-relaxed">
+          Try a broader location, different cuisine, lower min rating, or another budget.
+        </p>
+      </div>
+
+      <!-- ERROR STATE -->
+      <div id="m-state-error" class="hidden bg-card border border-border rounded-custom p-5 space-y-2.5">
+        <div class="flex items-center gap-2 text-error-text">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span class="text-xs font-mono font-bold uppercase">Groq Auth Error</span>
+        </div>
+        <h3 class="font-serif-heading text-base text-text-primary">
+          Groq API key is missing or invalid.
+        </h3>
+        <p class="text-xs text-text-muted leading-relaxed">
+          Set <code class="text-text-primary font-mono">GROQ_API_KEY</code> in <code class="text-text-primary font-mono">.env</code>, or set <code class="text-text-primary font-mono">USE_MOCK_LLM=true</code> for offline demo mode.
+        </p>
+      </div>
+
+      <!-- DATASET ERROR STATE -->
+      <div id="m-state-dataset" class="hidden bg-card border border-border rounded-custom p-5 space-y-2.5">
+        <div class="flex items-center gap-2 text-error-text">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7M4 7c0-2 1.5-3 3.5-3h9c2 0 3.5 1 3.5 3M4 7h16m-16 5h16"></path></svg>
+          <span class="text-xs font-mono font-bold uppercase">Dataset Storage</span>
+        </div>
+        <h3 class="font-serif-heading text-base text-text-primary">
+          Could not load the restaurant dataset.
+        </h3>
+        <p class="text-xs text-text-muted leading-relaxed">
+          Please check cached Zomato data files or refresh local cache.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Small Mobile State Showcase Micro-Frames -->
+    <div class="pt-6 border-t border-border space-y-4">
+      <span class="text-xs font-mono text-text-muted block uppercase tracking-wider">Independent State Cards:</span>
+      
+      <!-- Mini Frame Loading -->
+      <div class="p-3.5 rounded-custom bg-card border border-border text-center space-y-1">
+        <span class="text-[10px] font-mono text-accent uppercase">Loading Frame</span>
+        <p class="text-xs text-text-primary font-serif-heading">Finding matches and asking the AI to rank them…</p>
+      </div>
+
+      <!-- Mini Frame Empty -->
+      <div class="p-3.5 rounded-custom bg-card border border-border text-center space-y-1">
+        <span class="text-[10px] font-mono text-warning-text uppercase">Empty Frame</span>
+        <p class="text-xs text-text-primary font-serif-heading">No restaurants matched these filters.</p>
+        <p class="text-[11px] text-text-muted">Try a broader location, different cuisine, lower min rating, or another budget.</p>
+      </div>
+
+      <!-- Mini Frame Error -->
+      <div class="p-3.5 rounded-custom bg-card border border-border space-y-1">
+        <span class="text-[10px] font-mono text-error-text uppercase">Error Frame</span>
+        <p class="text-xs text-text-primary font-serif-heading">Groq API key is missing or invalid.</p>
+        <p class="text-[11px] text-text-muted">Set GROQ_API_KEY in .env, or set USE_MOCK_LLM=true for offline demo mode.</p>
+      </div>
+
+      <!-- Mini Frame Dataset Error -->
+      <div class="p-3.5 rounded-custom bg-card border border-border space-y-1">
+        <span class="text-[10px] font-mono text-error-text uppercase">Dataset Error Frame</span>
+        <p class="text-xs text-text-primary font-serif-heading">Could not load the restaurant dataset.</p>
+      </div>
+    </div>
+
+    <footer class="text-center pt-4 text-[11px] font-mono text-text-muted/60">
+      Restaurant Recommender · Mobile Edition
+    </footer>
+
+  </div>
+
+  <script>
+    function setMobileBudget(val, btn) {
+      document.querySelectorAll('.m-budget-btn').forEach(b => {
+        b.className = 'm-budget-btn h-9 rounded-[10px] text-xs font-medium text-text-muted';
+      });
+      btn.className = 'm-budget-btn h-9 rounded-[10px] text-xs font-semibold bg-[#242424] text-text-primary border border-border/80';
+    }
+
+    function toggleMDisclosure() {
+      const el = document.getElementById('m-details');
+      const arrow = document.getElementById('m-arrow');
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+      } else {
+        el.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+      }
+    }
+
+    function switchMobileState(val) {
+      const states = ['results', 'loading', 'empty', 'error', 'dataset'];
+      states.forEach(s => {
+        const el = document.getElementById('m-state-' + s);
+        if (el) el.classList.add('hidden');
+      });
+      const target = document.getElementById('m-state-' + val);
+      if (target) target.classList.remove('hidden');
+
+      const inputs = document.querySelectorAll('#mobile-form input, #mobile-form select, #mobile-form button');
+      if (val === 'loading') {
+        inputs.forEach(i => i.setAttribute('disabled', 'true'));
+      } else {
+        inputs.forEach(i => i.removeAttribute('disabled'));
+      }
+    }
+
+    function triggerMobileSubmit() {
+      switchMobileState('loading');
+      setTimeout(() => {
+        switchMobileState('results');
+      }, 900);
+    }
+  </script>
+</body>
+</html>
