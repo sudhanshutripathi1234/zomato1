@@ -1,8 +1,14 @@
-[phases.setup]
-nixPkgs = ["python311", "gcc"]
+providers = ["python"]
 
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+
+# Use python -m pip so PATH does not need a bare `pip` binary.
 [phases.install]
-cmds = ["pip install -r requirements-api.txt"]
+cmds = [
+  "python -m pip install --upgrade pip",
+  "python -m pip install -r requirements-api.txt",
+]
 
 [start]
 cmd = "uvicorn src.api.main:app --host 0.0.0.0 --port $PORT"
