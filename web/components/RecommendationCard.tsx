@@ -1,4 +1,9 @@
+"use client";
+
+import { useRef, type PointerEvent } from "react";
+import gsap from "gsap";
 import type { RecommendationItem } from "@/lib/types";
+import { prefersReducedMotion } from "@/lib/motion";
 
 type RecommendationCardProps = {
   item: RecommendationItem;
@@ -16,16 +21,37 @@ function formatRating(value: number | null): string {
 
 export function RecommendationCard({ item }: RecommendationCardProps) {
   const first = item.rank === 1;
+  const cardRef = useRef<HTMLElement>(null);
+
+  function lift(event: PointerEvent<HTMLElement>, raised: boolean) {
+    const el = cardRef.current;
+    if (!el || event.pointerType !== "mouse" || prefersReducedMotion()) return;
+    gsap.to(el, {
+      y: raised ? -3 : 0,
+      boxShadow: raised
+        ? "0 12px 28px rgba(7, 20, 37, 0.08)"
+        : "0 1px 2px rgba(7, 20, 37, 0.05)",
+      duration: 0.35,
+      ease: "power2.out",
+      overwrite: "auto",
+    });
+  }
 
   return (
-    <article className="rounded-custom border border-border bg-card p-5 shadow-sm transition hover:border-border/90 sm:p-6">
+    <article
+      ref={cardRef}
+      data-reveal
+      onPointerEnter={(event) => lift(event, true)}
+      onPointerLeave={(event) => lift(event, false)}
+      className="rounded-custom border border-border bg-card p-5 shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/40 sm:p-6"
+    >
       <div className="flex flex-col justify-between gap-2.5 pb-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <span
             className={
               first
-                ? "flex h-7 w-7 items-center justify-center rounded-lg bg-accent font-mono text-xs font-bold text-canvas shadow-sm"
-                : "flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-[#222222] font-mono text-xs font-bold text-text-primary"
+                ? "flex h-7 w-7 items-center justify-center rounded-lg bg-primary font-mono text-xs font-bold text-on-accent shadow-sm"
+                : "flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card-alt font-mono text-xs font-bold text-text-primary"
             }
           >
             #{item.rank}

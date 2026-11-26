@@ -55,9 +55,9 @@ _origins = _cors_origins()
 logger.info("CORS allow_origins=%s", _origins)
 
 app = FastAPI(
-    title="Restaurant Recommender API",
+    title="SPICE AI API",
     version="1.0.0",
-    description="Filter Zomato listings, then LLM-rank grounded candidates.",
+    description="SPICE AI filters Zomato listings, then LLM-ranks grounded candidates.",
     lifespan=_lifespan,
 )
 

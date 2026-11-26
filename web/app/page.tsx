@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import gsap from "gsap";
 import { AppHeader } from "@/components/AppHeader";
 import { MetricStrip } from "@/components/MetricStrip";
 import {
@@ -15,8 +16,11 @@ import {
   ErrorCard,
   LoadingCard,
 } from "@/components/StateCards";
+import { RevealList } from "@/components/RevealList";
+import { RiseIn } from "@/components/RiseIn";
 import { SummaryBanner } from "@/components/SummaryBanner";
 import { fetchMeta, postRecommend } from "@/lib/api";
+import { prefersReducedMotion, registerMotion } from "@/lib/motion";
 import type {
   MetaResponse,
   PreferenceInput,
@@ -53,6 +57,7 @@ export default function HomePage() {
   const [result, setResult] = useState<RecommendationResponse | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [lastPrefs, setLastPrefs] = useState<PreferenceInput | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +107,27 @@ export default function HomePage() {
     }
   }
 
+  useEffect(() => {
+    if (!loading && !result && !error) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    if (top >= 12 && top < window.innerHeight * 0.55) return;
+
+    if (prefersReducedMotion()) {
+      el.scrollIntoView({ block: "start" });
+      return;
+    }
+
+    registerMotion();
+    gsap.to(window, {
+      duration: 0.65,
+      ease: "power2.inOut",
+      scrollTo: { y: el, offsetY: 20 },
+      overwrite: "auto",
+    });
+  }, [loading, result, error]);
+
   const empty =
     result &&
     result.recommendations.length === 0 &&
@@ -122,33 +148,53 @@ export default function HomePage() {
         model={meta?.model || "loading"}
       />
 
-      {bootError ? <ErrorCard error={bootError} /> : null}
+      {bootError ? (
+        <RiseIn>
+          <ErrorCard error={bootError} />
+        </RiseIn>
+      ) : null}
 
       {!bootError ? (
         <>
-          <PreferenceForm
-            values={form}
-            locations={meta?.locations?.length ? meta.locations : [form.location || "…"]}
-            cuisines={cuisines}
-            restaurantCount={meta?.restaurant_count ?? 0}
-            disabled={!meta || loading}
-            submitting={loading}
-            onChange={setForm}
-            onSubmit={handleSubmit}
-          />
+          <RiseIn delay={0.18} className="space-y-7">
+            <PreferenceForm
+              values={form}
+              locations={meta?.locations?.length ? meta.locations : [form.location || "…"]}
+              cuisines={cuisines}
+              restaurantCount={meta?.restaurant_count ?? 0}
+              disabled={!meta || loading}
+              submitting={loading}
+              onChange={setForm}
+              onSubmit={handleSubmit}
+            />
 
-          <StatusLine restaurantCount={meta?.restaurant_count ?? 0} />
+            <StatusLine restaurantCount={meta?.restaurant_count ?? 0} />
+          </RiseIn>
 
+          <div ref={stageRef} className="scroll-mt-4 space-y-6">
           {loading ? (
             <LoadingCard restaurantCount={meta?.restaurant_count ?? 0} />
           ) : null}
 
-          {error ? <ErrorCard error={error} /> : null}
+          {error ? (
+            <RiseIn>
+              <ErrorCard error={error} />
+            </RiseIn>
+          ) : null}
 
-          {empty ? <EmptyCard message={result?.meta.message} /> : null}
+          {empty ? (
+            <RiseIn>
+              <EmptyCard message={result?.meta.message} />
+            </RiseIn>
+          ) : null}
 
           {result && !empty && !loading ? (
-            <div className="stagger space-y-6">
+            <RevealList
+              className="space-y-6"
+              watch={result.recommendations
+                .map((item) => `${item.restaurant_id}-${item.rank}`)
+                .join("|")}
+            >
               <MetricStrip
                 candidateCount={result.meta.candidate_count}
                 hardMatchCount={result.meta.hard_match_count}
@@ -173,8 +219,9 @@ export default function HomePage() {
                 meta={result.meta}
                 results={result.recommendations.length}
               />
-            </div>
+            </RevealList>
           ) : null}
+          </div>
         </>
       ) : null}
     </main>

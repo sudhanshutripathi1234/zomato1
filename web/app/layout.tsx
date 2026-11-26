@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Karla, Playfair_Display } from "next/font/google";
+import { FoodBackdrop } from "@/components/FoodBackdrop";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const playfair = Playfair_Display({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["500", "600", "700"],
 });
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const karla = Karla({
+  variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Restaurant Recommender",
+  title: "SPICE AI",
   description:
     "Filter real Zomato listings, then let AI rank and explain the best fits.",
 };
@@ -26,11 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${fraunces.variable} ${manrope.variable} min-h-screen bg-canvas font-sans text-text-primary antialiased`}
+        className={`${playfair.variable} ${karla.variable} min-h-screen font-sans text-white antialiased`}
       >
-        {children}
+        <FoodBackdrop />
+        <div className="app-shell">{children}</div>
       </body>
     </html>
   );

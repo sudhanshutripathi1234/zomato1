@@ -544,7 +544,7 @@ def _render_header() -> None:
         f"""
         <header class="rr-header">
           <div class="rr-title-row">
-            <h1 class="rr-title">Restaurant Recommender</h1>
+            <h1 class="rr-title">SPICE AI</h1>
             <div class="rr-chip"><span class="rr-dot"></span><span>{_mode_label()}</span></div>
           </div>
           <p class="rr-sub">Filter real Zomato listings, then let AI rank and explain the best fits.</p>
@@ -679,7 +679,7 @@ def load_restaurant_store() -> RestaurantStore:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Restaurant Recommender",
+        page_title="SPICE AI",
         layout="centered",
         initial_sidebar_state="collapsed",
     )
