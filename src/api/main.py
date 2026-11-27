@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
 from src.config import settings
 from src.data.store import RestaurantStore, get_store
 from src.models.preferences import PreferenceInput, RecommendationResponse
+from src.services.geocode import GeocodeResult, geocode
 from src.services.recommender import recommend
 
 logging.basicConfig(
@@ -134,6 +135,17 @@ def meta() -> MetaResponse:
     )
 
 
+@app.get("/geocode", response_model=GeocodeResult)
+def geocode_endpoint(q: str) -> GeocodeResult:
+    query = (q or "").strip()
+    if len(query) < 3:
+        raise HTTPException(status_code=400, detail="Query must be at least 3 characters.")
+    result = geocode(query)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Could not geocode that place.")
+    return result
+
+
 @app.post("/recommend", response_model=RecommendationResponse)
 def recommend_endpoint(body: PreferenceInput) -> RecommendationResponse:
     if not settings.use_mock_llm and not settings.llm_api_key:
@@ -163,5 +175,5 @@ def root() -> dict[str, Any]:
     return {
         "service": "restaurant-recommender",
         "docs": "/docs",
-        "endpoints": ["/health", "/meta", "/recommend"],
+        "endpoints": ["/health", "/meta", "/recommend", "/geocode"],
     }

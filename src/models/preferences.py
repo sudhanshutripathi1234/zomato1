@@ -138,6 +138,7 @@ class RecommendationItem(BaseModel):
     rating: Optional[float] = None
     estimated_cost: Optional[float] = None
     location: str = ""
+    address: str = ""
     explanation: str = ""
 
 

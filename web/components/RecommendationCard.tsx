@@ -1,9 +1,19 @@
 "use client";
 
-import { useRef, type PointerEvent } from "react";
+import { useRef, useState, type PointerEvent } from "react";
 import gsap from "gsap";
-import type { RecommendationItem } from "@/lib/types";
+import { fetchGeocode } from "@/lib/api";
+import {
+  destinationQuery,
+  formatDistanceKm,
+  GeoError,
+  getCurrentPosition,
+  googleMapsDirectionsUrl,
+  haversineKm,
+  type UserCoords,
+} from "@/lib/geo";
 import { prefersReducedMotion } from "@/lib/motion";
+import type { RecommendationItem } from "@/lib/types";
 
 type RecommendationCardProps = {
   item: RecommendationItem;
@@ -22,6 +32,9 @@ function formatRating(value: number | null): string {
 export function RecommendationCard({ item }: RecommendationCardProps) {
   const first = item.rank === 1;
   const cardRef = useRef<HTMLElement>(null);
+  const [distanceLabel, setDistanceLabel] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"distance" | "directions" | null>(null);
 
   function lift(event: PointerEvent<HTMLElement>, raised: boolean) {
     const el = cardRef.current;
@@ -35,6 +48,89 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
       ease: "power2.out",
       overwrite: "auto",
     });
+  }
+
+  const query = destinationQuery({
+    name: item.name,
+    address: item.address,
+    location: item.location,
+  });
+
+  async function resolveUserCoords(): Promise<UserCoords | null> {
+    try {
+      return await getCurrentPosition();
+    } catch (err) {
+      if (err instanceof GeoError) {
+        setStatus(err.message);
+      } else {
+        setStatus("Could not read your current location.");
+      }
+      return null;
+    }
+  }
+
+  async function handleDistance() {
+    setBusy("distance");
+    setStatus(null);
+    try {
+      const origin = await resolveUserCoords();
+      if (!origin) return;
+
+      const place = await fetchGeocode(query);
+      const km = haversineKm(origin, { lat: place.lat, lon: place.lon });
+      setDistanceLabel(`${formatDistanceKm(km)} (approx. straight-line)`);
+      setStatus(null);
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: string }).message || "")
+          : "";
+      setStatus(
+        message ||
+          "Could not estimate distance. Allow location access and make sure the API is running.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleDirections() {
+    setBusy("directions");
+    setStatus(null);
+    // Open immediately in the click handler so popup blockers don't kill the tab
+    // after the async geolocation prompt.
+    const popup = window.open("about:blank", "_blank");
+    try {
+      let origin: UserCoords | null = null;
+      try {
+        origin = await getCurrentPosition();
+      } catch (err) {
+        if (err instanceof GeoError && err.kind === "denied") {
+          setStatus(
+            "Location denied — opening Google Maps with the restaurant only.",
+          );
+        }
+      }
+      const url = googleMapsDirectionsUrl({
+        destination: query,
+        origin,
+      });
+      if (popup && !popup.closed) {
+        popup.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+    } catch {
+      const fallback = googleMapsDirectionsUrl({ destination: query });
+      if (popup && !popup.closed) {
+        popup.location.href = fallback;
+      } else {
+        window.location.assign(fallback);
+      }
+      setStatus("Opened Google Maps without your current location.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -86,6 +182,33 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
           </span>
           {item.explanation || "No explanation available."}
         </p>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 border-t border-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-h-[1.25rem] text-xs text-text-muted">
+          {distanceLabel ? (
+            <span className="font-medium text-text-primary">{distanceLabel}</span>
+          ) : null}
+          {status ? <span className="block text-warning">{status}</span> : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={handleDistance}
+            className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border bg-card-alt px-3 text-xs font-semibold text-text-primary transition hover:border-accent/40 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy === "distance" ? "Checking…" : "Show distance"}
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={handleDirections}
+            className="inline-flex h-9 items-center justify-center rounded-[10px] bg-accent px-3 text-xs font-semibold text-on-accent transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy === "directions" ? "Opening…" : "Get directions"}
+          </button>
+        </div>
       </div>
     </article>
   );

@@ -44,6 +44,7 @@ def _to_items_from_parsed(
                 rating=restaurant.rating,
                 estimated_cost=restaurant.cost,
                 location=restaurant.location,
+                address=restaurant.address,
                 explanation=row.explanation or FALLBACK_EXPLANATION,
             )
         )
@@ -69,6 +70,7 @@ def _rating_fallback_items(
             rating=r.rating,
             estimated_cost=r.cost,
             location=r.location,
+            address=r.address,
             explanation=FALLBACK_EXPLANATION,
         )
         for i, r in enumerate(ranked, start=1)

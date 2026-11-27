@@ -27,7 +27,14 @@ export type RecommendationItem = {
   rating: number | null;
   estimated_cost: number | null;
   location: string;
+  address?: string;
   explanation: string;
+};
+
+export type GeocodeResponse = {
+  lat: number;
+  lon: number;
+  display_name?: string;
 };
 
 export type RecommendationResponse = {

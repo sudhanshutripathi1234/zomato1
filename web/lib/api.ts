@@ -1,4 +1,5 @@
 import type {
+  GeocodeResponse,
   MetaResponse,
   PreferenceInput,
   RecommendationResponse,
@@ -58,6 +59,17 @@ export async function postRecommend(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(prefs),
   });
+  if (!res.ok) {
+    throw await readError(res);
+  }
+  return res.json();
+}
+
+export async function fetchGeocode(query: string): Promise<GeocodeResponse> {
+  const res = await fetch(
+    `${API_URL}/geocode?${new URLSearchParams({ q: query })}`,
+    { cache: "no-store" },
+  );
   if (!res.ok) {
     throw await readError(res);
   }
