@@ -28,6 +28,7 @@ export type RecommendationItem = {
   estimated_cost: number | null;
   location: string;
   address?: string;
+  url?: string;
   explanation: string;
 };
 

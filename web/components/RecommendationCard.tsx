@@ -170,6 +170,16 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
           {status ? <span className="block text-warning">{status}</span> : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          {item.url ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border bg-card-alt px-3 text-xs font-semibold text-text-primary transition hover:border-accent/40 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Read reviews on Zomato
+            </a>
+          ) : null}
           <button
             type="button"
             disabled={busy !== null}

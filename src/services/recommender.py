@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 FALLBACK_EXPLANATION = "Matches your filters (ranked by rating; LLM ranking unavailable)."
 
 
+def _public_url(url: str) -> str:
+    """Drop tracking query params from Zomato links."""
+    value = (url or "").strip()
+    if not value:
+        return ""
+    return value.split("?", 1)[0]
+
+
 def _to_items_from_parsed(
     parsed: ParsedLLMResponse,
     by_id: dict[str, Restaurant],
@@ -45,6 +53,7 @@ def _to_items_from_parsed(
                 estimated_cost=restaurant.cost,
                 location=restaurant.location,
                 address=restaurant.address,
+                url=_public_url(restaurant.url),
                 explanation=row.explanation or FALLBACK_EXPLANATION,
             )
         )
@@ -71,6 +80,7 @@ def _rating_fallback_items(
             estimated_cost=r.cost,
             location=r.location,
             address=r.address,
+            url=_public_url(r.url),
             explanation=FALLBACK_EXPLANATION,
         )
         for i, r in enumerate(ranked, start=1)
