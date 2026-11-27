@@ -15,6 +15,10 @@ export class GeoError extends Error {
   }
 }
 
+let cachedCoords: UserCoords | null = null;
+let cachedAt = 0;
+const CACHE_MS = 5 * 60_000;
+
 export function destinationQuery(input: {
   name: string;
   address?: string;
@@ -65,7 +69,16 @@ export function googleMapsDirectionsUrl(options: {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
+export function getCachedPosition(): UserCoords | null {
+  if (!cachedCoords) return null;
+  if (Date.now() - cachedAt > CACHE_MS) return null;
+  return cachedCoords;
+}
+
 export function getCurrentPosition(): Promise<UserCoords> {
+  const fresh = getCachedPosition();
+  if (fresh) return Promise.resolve(fresh);
+
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       reject(
@@ -79,10 +92,12 @@ export function getCurrentPosition(): Promise<UserCoords> {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        resolve({
+        cachedCoords = {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
-        });
+        };
+        cachedAt = Date.now();
+        resolve(cachedCoords);
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -112,8 +127,8 @@ export function getCurrentPosition(): Promise<UserCoords> {
       },
       {
         enableHighAccuracy: false,
-        timeout: 12000,
-        maximumAge: 60_000,
+        timeout: 4000,
+        maximumAge: CACHE_MS,
       },
     );
   });

@@ -7,10 +7,10 @@ import {
   destinationQuery,
   formatDistanceKm,
   GeoError,
+  getCachedPosition,
   getCurrentPosition,
   googleMapsDirectionsUrl,
   haversineKm,
-  type UserCoords,
 } from "@/lib/geo";
 import { prefersReducedMotion } from "@/lib/motion";
 import type { RecommendationItem } from "@/lib/types";
@@ -34,7 +34,7 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
   const cardRef = useRef<HTMLElement>(null);
   const [distanceLabel, setDistanceLabel] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"distance" | "directions" | null>(null);
+  const [busy, setBusy] = useState<"distance" | null>(null);
 
   function lift(event: PointerEvent<HTMLElement>, raised: boolean) {
     const el = cardRef.current;
@@ -56,80 +56,58 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
     location: item.location,
   });
 
-  async function resolveUserCoords(): Promise<UserCoords | null> {
-    try {
-      return await getCurrentPosition();
-    } catch (err) {
-      if (err instanceof GeoError) {
-        setStatus(err.message);
-      } else {
-        setStatus("Could not read your current location.");
-      }
-      return null;
-    }
-  }
-
   async function handleDistance() {
     setBusy("distance");
-    setStatus(null);
+    setStatus("Finding your location…");
     try {
-      const origin = await resolveUserCoords();
-      if (!origin) return;
+      const [originResult, placeResult] = await Promise.allSettled([
+        getCurrentPosition(),
+        fetchGeocode(query),
+      ]);
 
-      const place = await fetchGeocode(query);
+      if (originResult.status === "rejected") {
+        const err = originResult.reason;
+        setStatus(
+          err instanceof GeoError
+            ? err.message
+            : "Could not read your current location.",
+        );
+        return;
+      }
+      if (placeResult.status === "rejected") {
+        const err = placeResult.reason;
+        const message =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message?: string }).message || "")
+            : "";
+        setStatus(
+          message ||
+            "Could not estimate distance. Make sure the API is running.",
+        );
+        return;
+      }
+
+      const origin = originResult.value;
+      const place = placeResult.value;
       const km = haversineKm(origin, { lat: place.lat, lon: place.lon });
       setDistanceLabel(`${formatDistanceKm(km)} (approx. straight-line)`);
       setStatus(null);
-    } catch (err) {
-      const message =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message?: string }).message || "")
-          : "";
-      setStatus(
-        message ||
-          "Could not estimate distance. Allow location access and make sure the API is running.",
-      );
     } finally {
       setBusy(null);
     }
   }
 
-  async function handleDirections() {
-    setBusy("directions");
+  function handleDirections() {
     setStatus(null);
-    // Open immediately in the click handler so popup blockers don't kill the tab
-    // after the async geolocation prompt.
-    const popup = window.open("about:blank", "_blank");
-    try {
-      let origin: UserCoords | null = null;
-      try {
-        origin = await getCurrentPosition();
-      } catch (err) {
-        if (err instanceof GeoError && err.kind === "denied") {
-          setStatus(
-            "Location denied — opening Google Maps with the restaurant only.",
-          );
-        }
-      }
-      const url = googleMapsDirectionsUrl({
-        destination: query,
-        origin,
-      });
-      if (popup && !popup.closed) {
-        popup.location.href = url;
-      } else {
-        window.location.assign(url);
-      }
-    } catch {
-      const fallback = googleMapsDirectionsUrl({ destination: query });
-      if (popup && !popup.closed) {
-        popup.location.href = fallback;
-      } else {
-        window.location.assign(fallback);
-      }
-      setStatus("Opened Google Maps without your current location.");
-    } finally {
-      setBusy(null);
+    // Open Maps immediately — Google uses the device location for live routing.
+    // Using any cached origin only when already available keeps the click instant.
+    const url = googleMapsDirectionsUrl({
+      destination: query,
+      origin: getCachedPosition(),
+    });
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      window.location.assign(url);
     }
   }
 
@@ -206,7 +184,7 @@ export function RecommendationCard({ item }: RecommendationCardProps) {
             onClick={handleDirections}
             className="inline-flex h-9 items-center justify-center rounded-[10px] bg-accent px-3 text-xs font-semibold text-on-accent transition hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy === "directions" ? "Opening…" : "Get directions"}
+            Get directions
           </button>
         </div>
       </div>
